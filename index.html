@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<!-- CODIGO CREADO POR EAM96 - EXCLUSIVAMENTE PARA USO PERSONAL. -->
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluido Orgánico - Three.js</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #030408; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed; 
+            top: 0;
+            left: 0;
+            z-index: 1;
+            pointer-events: none; 
+        }
+
+        /* ========================================================
+           INDICADOR MÍNIMO (BOTÓN PEQUEÑO PARA REABRIR)
+           ======================================================== */
+        #mini-open-btn {
+            position: fixed;
+            top: 65px;
+            left: 0;
+            width: 34px;
+            height: 34px;
+            background: rgba(15, 15, 15, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            display: none; 
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+            z-index: 2147483647;
+            pointer-events: auto;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        #mini-open-btn.visible {
+            display: flex;
+        }
+
+        #mini-open-btn:hover {
+            background: rgba(45, 45, 45, 1);
+        }
+
+        /* ========================================================
+           PANEL DE CONTROLES: EXACTAMENTE 1342px x 34px
+           ======================================================== */
+        #main-panel {
+            position: fixed; 
+            top: 65px; 
+            left: 0; 
+            width: max-content;  
+            height: 34px;   
+            box-sizing: border-box; 
+            
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 0 10px 0 15px; 
+            
+            background: rgba(15, 15, 15, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            
+            transition: max-width 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            opacity: 1;
+            max-width: calc(100vw - 20px); 
+            
+            overflow-x: auto;
+            overflow-y: hidden; 
+            white-space: nowrap;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+            scrollbar-width: none; 
+            z-index: 2147483647; 
+            pointer-events: auto;
+        }
+
+        #main-panel::-webkit-scrollbar {
+            display: none; 
+        }
+
+        #main-panel.hidden {
+            max-width: 0;
+            opacity: 0;
+            padding: 0;
+            border-width: 0;
+            pointer-events: none; 
+        }
+
+        /* ========================================================
+           SISTEMA DE PALETAS (INTEGRADO EN EL PANEL)
+           ======================================================== */
+        .palette-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .palette-btn:hover {
+            transform: scale(1.2);
+            border-color: #fff;
+        }
+
+        .palette-label {
+            color: #ddd;
+            font-size: 11px;
+            margin-right: 5px;
+            user-select: none;
+            font-weight: bold;
+        }
+
+        /* ========================================================
+           CONTROLES INTERNOS Y BOTÓN DE RETRAER
+           ======================================================== */
+        #close-btn {
+            margin-left: auto; 
+            position: sticky;
+            right: 0;
+            z-index: 10;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            transition: background 0.2s, transform 0.2s;
+            flex-shrink: 0; 
+        }
+
+        #close-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px; 
+            color: #ddd;
+            user-select: none;
+            height: 100%; 
+            flex-shrink: 0; 
+        }
+
+        input[type="range"] {
+            width: 70px;
+            height: 10px; 
+            accent-color: #fff;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        input[type="checkbox"] {
+            cursor: pointer;
+            accent-color: #fff;
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+        
+        .separator {
+            width: 1px;
+            height: 18px; 
+            background: rgba(255,255,255,0.25);
+            margin: 0 2px;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="mini-open-btn" title="Mostrar Panel de Controles">≡</div>
+
+    <!-- Panel de Controles Principal (1342x34 px) -->
+    <div id="main-panel">
+        
+        <!-- Paletas ahora integradas adentro del panel principal -->
+        <div class="control-group" id="palettes-container">
+            <div class="palette-label">Paletas:</div>
+            <!-- Los botones de paleta se generan dinámicamente en JS -->
+        </div>
+
+        <div class="separator"></div>
+        
+        <div class="control-group" title="Desplazamiento / uTime">
+            <label for="ctrl-offset">Desplaz.</label>
+            <input type="range" id="ctrl-offset" min="0" max="2" step="0.01">
+        </div>
+        <div class="control-group" title="Intensidad de Mezcla">
+            <label for="ctrl-contrast">Contraste</label>
+            <input type="range" id="ctrl-contrast" min="0" max="5" step="0.01">
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="control-group">
+            <label for="ctrl-speed">Velocidad</label>
+            <input type="range" id="ctrl-speed" min="0" max="1" step="0.01">
+        </div>
+        <div class="control-group" title="Zoom del Shader">
+            <label for="ctrl-elevation">Altura</label>
+            <input type="range" id="ctrl-elevation" min="0" max="5" step="0.01">
+        </div>
+        <div class="control-group" title="Amplitud de la Onda">
+            <label for="ctrl-frequency">Detalle</label>
+            <input type="range" id="ctrl-frequency" min="0.05" max="1" step="0.01">
+        </div>
+        
+        <div class="separator"></div>
+
+        <div class="control-group" title="Activa un patrón topográfico estilizado">
+            <label for="ctrl-wireframe">Malla</label>
+            <input type="checkbox" id="ctrl-wireframe">
+        </div>
+
+        <div id="close-btn" title="Ocultar controles">❯</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- ============================================== -->
+    <!-- SHADER: VERTEX (Fullscreen Quad, Sin Cámara)   -->
+    <!-- ============================================== -->
+    <script type="x-shader/x-vertex" id="waveVertexShader">
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            // Se dibuja directamente sobre toda la pantalla (2D)
+            gl_Position = vec4(position, 1.0); 
+        }
+    </script>
+
+    <!-- ============================================== -->
+    <!-- SHADER: FRAGMENT (FLUIDO ORGÁNICO)             -->
+    <!-- ============================================== -->
+    <script type="x-shader/x-fragment" id="waveFragmentShader">
+        uniform vec2 uResolution;
+        uniform float uTime;
+        
+        uniform vec3 uColor1; // Base
+        uniform vec3 uColor2; // Medio
+        uniform vec3 uColor3; // Pico
+        
+        uniform float uColorOffset; // Desplazamiento -> Velocidad de tiempo
+        uniform float uColorMultiplier; // Contraste -> Intensidad de mezcla
+        uniform float uSpeed; // Velocidad -> Multiplicador de fluidez
+        uniform float uElevation; // Altura -> Zoom/Escala
+        uniform float uFrequency; // Detalle -> Amplitud de distorsión
+        uniform float uWireframe; // Malla -> Patrón topográfico (0.0 o 1.0)
+
+        varying vec2 vUv;
+
+        void main() {
+            // Normalizar coordenadas y aplicar aspect ratio
+            vec2 uv = gl_FragCoord.xy / uResolution.xy;
+            uv.x *= uResolution.x / uResolution.y;
+
+            // Tiempo base modificado por Desplazamiento
+            float time = uTime * uColorOffset * 0.5;
+
+            // Escala modificada por Altura
+            vec2 p = uv * (uElevation * 2.0 + 1.0);
+
+            // Generación del flujo orgánico (Distorsión iterativa de coordenadas)
+            for(float i = 1.0; i < 5.0; i++) {
+                p.x += (uFrequency) * sin(i * p.y + time + uSpeed * i);
+                p.y += (uFrequency) * cos(i * p.x + time + uSpeed * i);
+            }
+
+            // Forma base de la onda
+            float f = sin(p.x + p.y + time) * 0.5 + 0.5;
+
+            // Intensidad / Contraste
+            f = pow(f, uColorMultiplier + 0.1); 
+
+            // Patrón Malla (Topográfico / Bandas de contorno)
+            if (uWireframe > 0.5) {
+                f = abs(sin(f * 20.0));
+                f = smoothstep(0.0, 0.8, f);
+            }
+
+            // Mezcla de colores (ColorA -> ColorB -> ColorC)
+            vec3 color = mix(uColor1, uColor2, smoothstep(0.0, 0.4, f));
+            color = mix(color, uColor3, smoothstep(0.4, 1.0, f));
+
+            gl_FragColor = vec4(color, 1.0);
+        }
+    </script>
+
+    <!-- ============================================== -->
+    <!-- MAIN JAVASCRIPT Y PROTECCIÓN BÁSICA            -->
+    <!-- ============================================== -->
+    <script>
+        console.log("%cCODIGO CREADO POR EAM96 - EXCLUSIVAMENTE PARA USO PERSONAL.", "color: #ff8822; font-size: 14px; font-weight: bold; background-color: #15062a; padding: 10px; border-radius: 5px;");
+
+        // PROTECCIÓN DISUASORIA LIGERA
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('keydown', e => {
+            if (
+                e.key === 'F12' || e.keyCode === 123 || 
+                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) || 
+                (e.ctrlKey && (e.key === 'U' || e.key === 'u')) 
+            ) {
+                e.preventDefault();
+            }
+        });
+
+        // INICIO DEL MOTOR
+        let scene, camera, renderer, material, mesh;
+        let clock = new THREE.Clock();
+
+        const STORAGE_KEY = 'shader_bg_config_xat';
+
+        // Valores ideales por defecto para el Shader Fluido
+        const defaultConfig = {
+            color1: '#001f3f', // Océano Profundo
+            color2: '#0074d9',
+            color3: '#7fdbff',
+            speed: 0.5,        
+            elevation: 1.0,    // Zoom equilibrado
+            frequency: 0.5,    // Distorsión orgánica
+            colorOffset: 0.8,  // Flujo temporal activo
+            colorMultiplier: 1.0, 
+            wireframe: false,
+            isPanelOpen: true 
+        };
+
+        // Paletas Predefinidas
+        const palettes = [
+            ['#001f3f', '#0074d9', '#7fdbff'], // Ocean
+            ['#2a0800', '#b22222', '#ff8c00'], // Magma
+            ['#0d0221', '#ff007f', '#00f0ff'], // Cyberpunk
+            ['#002b18', '#007f5f', '#aacc00'], // Forest
+            ['#15062a', '#91165b', '#ff8822']  // Sunset (Original)
+        ];
+
+        let config = { ...defaultConfig };
+        let saveTimeout = null;
+
+        // Se removieron color1, color2 y color3 del escáner DOM ya que ahora las paletas actúan directo
+        const controlsList = [
+            { id: 'ctrl-offset', key: 'colorOffset', type: 'float', uniform: 'uColorOffset' },
+            { id: 'ctrl-contrast', key: 'colorMultiplier', type: 'float', uniform: 'uColorMultiplier' },
+            { id: 'ctrl-speed', key: 'speed', type: 'float', uniform: 'uSpeed' },
+            { id: 'ctrl-elevation', key: 'elevation', type: 'float', uniform: 'uElevation' },
+            { id: 'ctrl-frequency', key: 'frequency', type: 'float', uniform: 'uFrequency' },
+            { id: 'ctrl-wireframe', key: 'wireframe', type: 'bool', uniform: 'uWireframe' }
+        ];
+
+        function loadConfig() {
+            try {
+                const savedConfig = localStorage.getItem(STORAGE_KEY);
+                if (savedConfig) {
+                    config = { ...config, ...JSON.parse(savedConfig) };
+                }
+            } catch (e) {
+                console.error("Error al cargar", e);
+            }
+        }
+
+        function requestSave() {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+            }, 500); 
+        }
+
+        function init() {
+            loadConfig();
+
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            // Cámara ortográfica sin matriz de vista (ideal para Shaders 2D / Fullscreen)
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+            container.appendChild(renderer.domElement);
+
+            // Geometría plana que cubre toda la pantalla exactamente
+            const geometry = new THREE.PlaneGeometry(2, 2);
+
+            material = new THREE.ShaderMaterial({
+                vertexShader: document.getElementById('waveVertexShader').textContent,
+                fragmentShader: document.getElementById('waveFragmentShader').textContent,
+                uniforms: {
+                    uTime: { value: 0 },
+                    uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                    uSpeed: { value: config.speed },
+                    uElevation: { value: config.elevation },
+                    uFrequency: { value: config.frequency },
+                    uColor1: { value: new THREE.Color(config.color1) },
+                    uColor2: { value: new THREE.Color(config.color2) },
+                    uColor3: { value: new THREE.Color(config.color3) },
+                    uColorOffset: { value: config.colorOffset },
+                    uColorMultiplier: { value: config.colorMultiplier },
+                    uWireframe: { value: config.wireframe ? 1.0 : 0.0 }
+                },
+                depthWrite: false
+            });
+
+            mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            buildPaletteBar();
+            setupUIValues();
+
+            window.addEventListener('resize', onWindowResize, { passive: true });
+
+            animate();
+            
+            // MOTOR SECUNDARIO: Escáner constante para iframes restringidos
+            setInterval(pollDOMAndSync, 50); 
+        }
+
+        function buildPaletteBar() {
+            const container = document.getElementById('palettes-container');
+            palettes.forEach(p => {
+                const btn = document.createElement('div');
+                btn.className = 'palette-btn';
+                // Gradiente css para representar la paleta visualmente
+                btn.style.background = `linear-gradient(135deg, ${p[0]} 0%, ${p[1]} 50%, ${p[2]} 100%)`;
+                
+                ['click', 'pointerdown', 'touchstart'].forEach(evt => {
+                    btn.addEventListener(evt, (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        
+                        // Aplicar directo a config y uniformes
+                        config.color1 = p[0];
+                        config.color2 = p[1];
+                        config.color3 = p[2];
+                        
+                        if (material) {
+                            material.uniforms.uColor1.value.set(p[0]);
+                            material.uniforms.uColor2.value.set(p[1]);
+                            material.uniforms.uColor3.value.set(p[2]);
+                        }
+                        
+                        requestSave();
+                    }, { capture: true });
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        function setupUIValues() {
+            const openBtn = document.getElementById('mini-open-btn');
+            const mainPanel = document.getElementById('main-panel');
+            const closeBtn = document.getElementById('close-btn');
+
+            const updateVisibility = () => {
+                if (config.isPanelOpen) {
+                    mainPanel.classList.remove('hidden');
+                    openBtn.classList.remove('visible');
+                } else {
+                    mainPanel.classList.add('hidden');
+                    openBtn.classList.add('visible');
+                }
+            };
+
+            updateVisibility();
+
+            const togglePanel = (e, targetState) => {
+                e.stopPropagation(); 
+                e.preventDefault();
+                
+                if (targetState !== undefined) {
+                    config.isPanelOpen = targetState;
+                } else {
+                    config.isPanelOpen = !config.isPanelOpen;
+                }
+                
+                requestSave();
+                updateVisibility();
+            };
+
+            // Eventos de apertura y retracción
+            openBtn.addEventListener('click', (e) => togglePanel(e, true), { capture: true });
+            closeBtn.addEventListener('click', (e) => togglePanel(e, false), { capture: true });
+
+            controlsList.forEach(c => {
+                const el = document.getElementById(c.id);
+                if (el) {
+                    if (c.type === 'bool') el.checked = !!config[c.key];
+                    else el.value = config[c.key];
+                }
+            });
+        }
+
+        function pollDOMAndSync() {
+            if (!material) return;
+            let changesDetected = false;
+
+            controlsList.forEach(c => {
+                const el = document.getElementById(c.id);
+                if (!el) return;
+
+                if (c.type === 'float') {
+                    const val = parseFloat(el.value);
+                    if (!isNaN(val) && val !== config[c.key]) {
+                        config[c.key] = val;
+                        material.uniforms[c.uniform].value = val;
+                        changesDetected = true;
+                    }
+                } 
+                else if (c.type === 'bool') {
+                    const val = el.checked;
+                    if (val !== config[c.key]) {
+                        config[c.key] = val;
+                        if (material.uniforms[c.uniform]) {
+                            material.uniforms[c.uniform].value = val ? 1.0 : 0.0; 
+                        }
+                        changesDetected = true;
+                    }
+                }
+            });
+
+            if (changesDetected) {
+                requestSave();
+                if(renderer && scene && camera) {
+                    renderer.render(scene, camera);
+                }
+            }
+        }
+
+        function onWindowResize() {
+            if(!renderer || !material) return;
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            // Actualizar la resolución en el shader para que no se deforme el aspecto
+            material.uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!material || !renderer) return;
+
+            // Escaneo maestro para iframes (actualiza variables en tiempo real)
+            pollDOMAndSync();
+
+            // Tiempo fluyendo incesantemente
+            material.uniforms.uTime.value = clock.getElapsedTime();
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
